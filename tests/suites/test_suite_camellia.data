@@ -202,3 +202,6 @@ camellia_decrypt_cbc:"0000000000000000000000000000000000000000000000000000000000
 Camellia Selftest
 depends_on:MBEDTLS_SELF_TEST
 camellia_selftest:
+
+Camellia copy contexts
+camellia_copy_context:"0123456789abcdeffedcba9876543210":"0123456789abcdeffedcba9876543210"

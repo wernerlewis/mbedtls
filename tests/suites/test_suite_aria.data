@@ -90,3 +90,6 @@ aria_decrypt_cfb128:"00112233445566778899aabbccddeeff00112233445566778899aabbccd
 
 ARIA Selftest
 aria_selftest:
+
+ARIA Copy contexts
+aria_copy_context:"000102030405060708090a0b0c0d0e0f":"00112233445566778899aabbccddeeff"
