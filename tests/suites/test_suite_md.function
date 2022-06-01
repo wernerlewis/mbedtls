@@ -222,6 +222,7 @@ void md_text_multi( char * text_md_name, char * text_src_string,
 
     /* Test clone */
     memset( output, 0x00, 100 );
+    memset( &ctx, 0x00, sizeof( ctx ) );
 
     TEST_ASSERT ( 0 == mbedtls_md_update( &ctx_copy, src_str + halfway, len - halfway ) );
     TEST_ASSERT ( 0 == mbedtls_md_finish( &ctx_copy, output ) );
