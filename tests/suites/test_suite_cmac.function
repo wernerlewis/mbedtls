@@ -284,3 +284,38 @@ exit:
 }
 /* END_CASE */
 
+/* BEGIN_CASE */
+void mbedtls_cmac_copy_context( int cipher_type, data_t *key_str, data_t *input_str )
+{
+    const mbedtls_cipher_info_t *cipher_info;
+    unsigned char mac1[16], mac2[16]; /* size set by the standard */
+    mbedtls_cipher_context_t ctx1, ctx2;
+
+    TEST_ASSERT( ( cipher_info = mbedtls_cipher_info_from_type( cipher_type ) )
+                    != NULL );
+
+    mbedtls_cipher_init( &ctx1 );
+    TEST_ASSERT( mbedtls_cipher_setup( &ctx1, cipher_info) == 0 );
+
+    TEST_ASSERT( mbedtls_cipher_cmac_starts( &ctx1, key_str->x,
+                        key_str->len * 8 ) == 0 );
+
+    TEST_ASSERT( mbedtls_cipher_cmac_update( &ctx1, input_str->x,
+                        input_str->len ) == 0 );
+    TEST_ASSERT( mbedtls_cipher_cmac_finish( &ctx1, mac1 ) == 0 );
+
+    // Copy context and clear original
+    // Not copying internal mbedtls_cmac_context_t as this is allocated on _starts
+    ctx2 = ctx1;
+    memset( &ctx1, 0, sizeof( ctx1 ) );
+
+    TEST_ASSERT( mbedtls_cipher_cmac_update( &ctx2, input_str->x,
+                        input_str->len ) == 0 );
+    TEST_ASSERT( mbedtls_cipher_cmac_finish( &ctx2, mac2 ) == 0 );
+
+    // Check MAC matches
+    TEST_ASSERT( mbedtls_test_hexcmp( mac1, mac2, 16, 16 ) == 0 );
+
+    mbedtls_cipher_free(&ctx2);
+}
+/* END_CASE */

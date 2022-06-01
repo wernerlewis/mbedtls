@@ -62,3 +62,6 @@ mbedtls_cmac_multiple_operations_same_key:MBEDTLS_CIPHER_AES_192_ECB:"8e73b0f7da
 CMAC Multiple Operations, same key #3 - variable byte blocks
 mbedtls_cmac_multiple_operations_same_key:MBEDTLS_CIPHER_AES_192_ECB:"8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b":192:16:"6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e51":32:"30c81c46a35ce411e5fbc1191a0a52eff69f2445df4f9b17ad2b417be66c3710":32:"":-1:"a1d5df0eed790f794d77589659f39a11":"6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e51":32:"30c81c46a35ce411e5fbc1191a0a52eff69f2445df4f9b17ad2b417be66c3710":32:"":-1:"a1d5df0eed790f794d77589659f39a11"
 
+CMAC Copy Context, Single 64 byte block
+mbedtls_cmac_copy_context:MBEDTLS_CIPHER_AES_128_ECB:"2b7e151628aed2a6abf7158809cf4f3c":"6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e5130c81c46a35ce411e5fbc1191a0a52eff69f2445df4f9b17ad2b417be66c3710"
+
