@@ -249,3 +249,9 @@ des_key_parity_run:
 
 DES Selftest
 des_selftest:
+
+DES-ECB copy context, OpenSSL Test Vector #10
+des_copy_context:"0131D9619DC1376E":"5CD54CA83DEF57DA"
+
+3DES-ECB 2Key copy context, OpenSSL Test Vector #1
+des3_copy_context:"0000000000000000FFFFFFFFFFFFFFFF":"0000000000000000"
