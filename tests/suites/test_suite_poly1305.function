@@ -79,6 +79,43 @@ void mbedtls_poly1305( data_t *key, data_t *expected_mac, data_t *src_str )
 }
 /* END_CASE */
 
+/* BEGIN_CASE */
+void mbedtls_poly1305_copy_context( data_t *key_str, data_t *input_str )
+{
+    unsigned char mac1[16], mac2[16]; /* size set by the standard */
+    mbedtls_poly1305_context ctx1, ctx2;
+    size_t halfway = input_str->len;
+
+    mbedtls_poly1305_init( &ctx1 );
+
+    TEST_ASSERT( mbedtls_poly1305_starts( &ctx1, key_str->x
+                        ) == 0 );
+
+    // Update with first half of input string
+    TEST_ASSERT( mbedtls_poly1305_update( &ctx1, input_str->x,
+                        halfway ) == 0 );
+    // Copy context
+    ctx2 = ctx1;
+
+    // Update with remaining input string and complete
+    TEST_ASSERT( mbedtls_poly1305_update( &ctx1, input_str->x + halfway,
+                        input_str->len - halfway ) == 0 );
+    TEST_ASSERT( mbedtls_poly1305_finish( &ctx1, mac1 ) == 0 );
+
+    // Clear original and complete copy
+    memset( &ctx1, 0, sizeof( ctx1 ) );
+
+    TEST_ASSERT( mbedtls_poly1305_update( &ctx2, input_str->x + halfway,
+                        input_str->len - halfway ) == 0 );
+    TEST_ASSERT( mbedtls_poly1305_finish( &ctx2, mac2 ) == 0 );
+
+    // Check MAC matches
+    TEST_ASSERT( mbedtls_test_hexcmp( mac1, mac2, 16, 16 ) == 0 );
+
+    mbedtls_poly1305_free(&ctx2);
+}
+/* END_CASE */
+
 /* BEGIN_CASE depends_on:MBEDTLS_SELF_TEST */
 void poly1305_selftest()
 {
