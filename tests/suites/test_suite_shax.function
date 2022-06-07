@@ -18,6 +18,39 @@ void mbedtls_sha1( data_t * src_str, data_t * hash )
 }
 /* END_CASE */
 
+/* BEGIN_CASE depends_on:MBEDTLS_SHA1_C */
+void mbedtls_sha1_copy_context( data_t * src_str, data_t * hash )
+{
+    unsigned char output1[41], output2[41];
+    mbedtls_sha1_context ctx, ctx_copy;
+    size_t halfway = src_str->len / 2;
+
+    mbedtls_sha1_init( &ctx );
+
+    // Start SHA1 and update with first half of src
+    TEST_ASSERT( mbedtls_sha1_starts( &ctx ) == 0 );
+
+    TEST_ASSERT( mbedtls_sha1_update( &ctx, src_str->x, halfway ) == 0 );
+
+    // Copy context and complete second half
+    ctx_copy = ctx;
+    TEST_ASSERT( mbedtls_sha1_update( &ctx, src_str->x + halfway,
+                                      src_str->len - halfway ) == 0 );
+    TEST_ASSERT( mbedtls_sha1_finish( &ctx, output1 ) == 0 );
+
+    // Clear original context and complete from copy
+    memset( &ctx, 0, sizeof( ctx ) );
+    TEST_ASSERT( mbedtls_sha1_update( &ctx_copy, src_str->x + halfway,
+                                      src_str->len - halfway ) == 0 );
+    TEST_ASSERT( mbedtls_sha1_finish( &ctx_copy, output2 ) == 0 );
+
+    // Check hash matches
+    TEST_ASSERT( mbedtls_test_hexcmp( output1, output2, 20, 20 ) == 0 );
+    TEST_ASSERT( mbedtls_test_hexcmp( output1, hash->x, 20, hash->len ) == 0 );
+    mbedtls_sha1_free( &ctx_copy );
+}
+/* END_CASE */
+
 /* BEGIN_CASE depends_on:MBEDTLS_SHA256_C:NOT_DEFINED */
 void sha256_invalid_param( )
 {
@@ -67,6 +100,39 @@ void mbedtls_sha256( data_t * src_str, data_t * hash )
 }
 /* END_CASE */
 
+/* BEGIN_CASE depends_on:MBEDTLS_SHA256_C */
+void mbedtls_sha256_copy_context( data_t * src_str, data_t * hash )
+{
+    unsigned char output1[65], output2[65];
+    mbedtls_sha256_context ctx, ctx_copy;
+    size_t halfway = src_str->len / 2;
+
+    mbedtls_sha256_init( &ctx );
+
+    // Start SHA256 and update with first half of src
+    TEST_ASSERT( mbedtls_sha256_starts( &ctx, 0 ) == 0 );
+
+    TEST_ASSERT( mbedtls_sha256_update( &ctx, src_str->x, halfway ) == 0 );
+
+    // Copy context and complete second half
+    ctx_copy = ctx;
+    TEST_ASSERT( mbedtls_sha256_update( &ctx, src_str->x + halfway,
+                                      src_str->len - halfway ) == 0 );
+    TEST_ASSERT( mbedtls_sha256_finish( &ctx, output1 ) == 0 );
+
+    // Clear original context and complete from copy
+    memset( &ctx, 0, sizeof( ctx ) );
+    TEST_ASSERT( mbedtls_sha256_update( &ctx_copy, src_str->x + halfway,
+                                      src_str->len - halfway ) == 0 );
+    TEST_ASSERT( mbedtls_sha256_finish( &ctx_copy, output2 ) == 0 );
+
+    // Check hash matches
+    TEST_ASSERT( mbedtls_test_hexcmp( output1, output2, 32, 32 ) == 0 );
+    TEST_ASSERT( mbedtls_test_hexcmp( output1, hash->x, 32, hash->len ) == 0 );
+    mbedtls_sha256_free( &ctx_copy );
+}
+/* END_CASE */
+
 /* BEGIN_CASE depends_on:MBEDTLS_SHA512_C:NOT_DEFINED */
 void sha512_invalid_param( )
 {
@@ -113,6 +179,39 @@ void mbedtls_sha512( data_t * src_str, data_t * hash )
     TEST_ASSERT( mbedtls_sha512( src_str->x, src_str->len, output, 0 ) == 0 );
 
     TEST_ASSERT( mbedtls_test_hexcmp( output, hash->x, 64, hash->len ) == 0 );
+}
+/* END_CASE */
+
+/* BEGIN_CASE depends_on:MBEDTLS_SHA512_C */
+void mbedtls_sha512_copy_context( data_t * src_str, data_t * hash )
+{
+    unsigned char output1[129], output2[129];
+    mbedtls_sha512_context ctx, ctx_copy;
+    size_t halfway = src_str->len / 2;
+
+    mbedtls_sha512_init( &ctx );
+
+    // Start SHA512 and update with first half of src
+    TEST_ASSERT( mbedtls_sha512_starts( &ctx, 0 ) == 0 );
+
+    TEST_ASSERT( mbedtls_sha512_update( &ctx, src_str->x, halfway ) == 0 );
+
+    // Copy context and complete second half
+    ctx_copy = ctx;
+    TEST_ASSERT( mbedtls_sha512_update( &ctx, src_str->x + halfway,
+                                      src_str->len - halfway ) == 0 );
+    TEST_ASSERT( mbedtls_sha512_finish( &ctx, output1 ) == 0 );
+
+    // Clear original context and complete from copy
+    memset( &ctx, 0, sizeof( ctx ) );
+    TEST_ASSERT( mbedtls_sha512_update( &ctx_copy, src_str->x + halfway,
+                                      src_str->len - halfway ) == 0 );
+    TEST_ASSERT( mbedtls_sha512_finish( &ctx_copy, output2 ) == 0 );
+
+    // Check hash matches
+    TEST_ASSERT( mbedtls_test_hexcmp( output1, output2, 64, 64 ) == 0 );
+    TEST_ASSERT( mbedtls_test_hexcmp( output1, hash->x, 64, hash->len) == 0 );
+    mbedtls_sha512_free( &ctx_copy );
 }
 /* END_CASE */
 
