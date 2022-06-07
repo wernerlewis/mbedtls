@@ -404,6 +404,9 @@ RSA Generate Key - 1025 bit key
 # mbedtls_rsa_gen_key only supports even-sized keys
 mbedtls_rsa_gen_key:1025:3:MBEDTLS_ERR_RSA_BAD_INPUT_DATA
 
+RSA Generate Key Copy Context - 2048 bit
+mbedtls_rsa_gen_copy_context:2048:3
+
 RSA Validate Params, toy example
 mbedtls_rsa_validate_params:10:"15":10:"3":10:"5":10:"3":10:"3":0:0
 

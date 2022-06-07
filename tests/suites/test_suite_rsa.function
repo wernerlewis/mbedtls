@@ -727,6 +727,48 @@ exit:
 }
 /* END_CASE */
 
+/* BEGIN_CASE depends_on:MBEDTLS_CTR_DRBG_C:MBEDTLS_ENTROPY_C:ENTROPY_HAVE_STRONG */
+void mbedtls_rsa_gen_copy_context( int nrbits, int exponent )
+{
+    mbedtls_rsa_context ctx, ctx_copy;
+    mbedtls_entropy_context entropy, entropy_copy;
+    mbedtls_ctr_drbg_context ctr_drbg, ctr_drbg_copy;
+    const char *pers = "test_suite_rsa";
+
+    mbedtls_ctr_drbg_init( &ctr_drbg );
+    mbedtls_entropy_init( &entropy );
+    mbedtls_rsa_init( &ctx );
+
+    // Copy and clear ctr_drbg and entropy ctx
+    entropy_copy = entropy;
+    ctr_drbg_copy = ctr_drbg;
+    memset( &entropy, 0, sizeof( entropy ) );
+    memset( &ctr_drbg, 0, sizeof( ctr_drbg ) );
+
+    // Generate RSA pair with copied contexts
+    TEST_ASSERT( mbedtls_ctr_drbg_seed( &ctr_drbg_copy, mbedtls_entropy_func,
+                                        &entropy_copy, (const unsigned char *) pers,
+                                        strlen( pers ) ) == 0 );
+    
+    TEST_ASSERT( mbedtls_rsa_gen_key( &ctx, mbedtls_ctr_drbg_random,
+                                      &ctr_drbg_copy, nrbits, exponent ) == 0 );
+
+    TEST_ASSERT( mbedtls_rsa_check_privkey( &ctx ) == 0 );
+    TEST_ASSERT( mbedtls_mpi_cmp_mpi( &ctx.P, &ctx.Q ) > 0 );
+
+    // Copy RSA context and confirm key pair
+    ctx_copy = ctx;
+    //memset( &ctx, 0, sizeof( ctx ) );
+
+    TEST_ASSERT( mbedtls_rsa_check_privkey( &ctx_copy ) == 0 );
+    TEST_ASSERT( mbedtls_mpi_cmp_mpi( &ctx_copy.P, &ctx_copy.Q ) > 0 );
+
+    mbedtls_rsa_free( &ctx_copy );
+    mbedtls_ctr_drbg_free( &ctr_drbg_copy );
+    mbedtls_entropy_free( &entropy_copy );
+}
+/* END_CASE */
+
 /* BEGIN_CASE depends_on:MBEDTLS_CTR_DRBG_C:MBEDTLS_ENTROPY_C */
 void mbedtls_rsa_deduce_primes( int radix_N, char *input_N,
                                 int radix_D, char *input_D,
