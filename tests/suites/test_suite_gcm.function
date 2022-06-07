@@ -235,6 +235,53 @@ exit:
 /* END_CASE */
 
 /* BEGIN_CASE */
+void gcm_encrypt_and_tag_copy_context( int cipher_id, data_t * key_str,
+                                       data_t * src_str, data_t * iv_str,
+                                       data_t * add_str, data_t * dst,
+                                       int tag_len_bits, data_t * tag )
+{
+    unsigned char output1[128], output2[128];
+    unsigned char tag_output1[16], tag_output2[16];
+    mbedtls_gcm_context ctx1, ctx2;
+    size_t tag_len = tag_len_bits / 8;
+    size_t n1;
+    size_t n1_add;
+
+    mbedtls_gcm_init( &ctx1 );
+
+    memset(output1, 0x00, 128);
+    memset(tag_output1, 0x00, 16);
+
+    // Start original context and update with AD
+    TEST_ASSERT( mbedtls_gcm_setkey( &ctx1, cipher_id, key_str->x, key_str->len * 8 ) == 0 );
+    TEST_ASSERT( mbedtls_gcm_starts( &ctx1, MBEDTLS_GCM_ENCRYPT, iv_str->x, iv_str->len ) == 0 );
+
+
+    TEST_ASSERT( mbedtls_gcm_crypt_and_tag( &ctx, MBEDTLS_GCM_ENCRYPT, src_str->len, iv_str->x, iv_str->len, add_str->x, add_str->len, src_str->x, output, tag_len, tag_output ) == 0 );
+
+        ASSERT_COMPARE( output, src_str->len, dst->x, dst->len );
+        ASSERT_COMPARE( tag_output, tag_len, tag->x, tag->len );
+
+        for( n1 = 0; n1 <= src_str->len; n1 += 1 )
+        {
+            for( n1_add = 0; n1_add <= add_str->len; n1_add += 1 )
+            {
+                mbedtls_test_set_step( n1 * 10000 + n1_add );
+                if( !check_multipart( &ctx, MBEDTLS_GCM_ENCRYPT,
+                                    iv_str, add_str, src_str,
+                                    dst, tag,
+                                    n1, n1_add ) )
+                    goto exit;
+            }
+        }
+    }
+
+exit:
+    mbedtls_gcm_free( &ctx );
+}
+/* END_CASE */
+
+/* BEGIN_CASE */
 void gcm_decrypt_and_verify( int cipher_id, data_t * key_str,
                              data_t * src_str, data_t * iv_str,
                              data_t * add_str, int tag_len_bits,
