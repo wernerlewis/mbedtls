@@ -293,7 +293,7 @@ void mbedtls_test_err_add_check( int high, int low,
  * \return \c 0 on success, an \c MBEDTLS_ERR_MPI_xxx error code otherwise.
  */
 /* Since the library has exactly the desired behavior, this is trivial. */
-int mbedtls_test_read_mpi( mbedtls_mpi *X, int radix, const char *s );
+int mbedtls_test_read_mpi( mbedtls_mpi *X, const char *s );
 #endif /* MBEDTLS_BIGNUM_C */
 
 #endif /* TEST_HELPERS_H */
