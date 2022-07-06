@@ -496,8 +496,8 @@ exit:
 /* END_CASE */
 
 /* BEGIN_CASE depends_on:MBEDTLS_FS_IO */
-void mbedtls_mpi_read_file( int radix_X, char * input_file,
-                            data_t * input_A, int result )
+void mbedtls_mpi_read_file( char * input_file, data_t * input_A,
+                            int result )
 {
     mbedtls_mpi X;
     unsigned char buf[1000];
@@ -511,7 +511,7 @@ void mbedtls_mpi_read_file( int radix_X, char * input_file,
 
     file = fopen( input_file, "r" );
     TEST_ASSERT( file != NULL );
-    ret = mbedtls_mpi_read_file( &X, radix_X, file );
+    ret = mbedtls_mpi_read_file( &X, 16, file );
     fclose(file);
     TEST_ASSERT( ret == result );
 
@@ -522,7 +522,7 @@ void mbedtls_mpi_read_file( int radix_X, char * input_file,
         TEST_ASSERT( mbedtls_mpi_write_binary( &X, buf, buflen ) == 0 );
 
 
-        TEST_ASSERT( mbedtls_test_hexcmp( buf, input_A->x,
+       TEST_ASSERT( mbedtls_test_hexcmp( buf, input_A->x,
                                           buflen, input_A->len ) == 0 );
     }
 
@@ -532,8 +532,7 @@ exit:
 /* END_CASE */
 
 /* BEGIN_CASE depends_on:MBEDTLS_FS_IO */
-void mbedtls_mpi_write_file( char * input_X, int output_radix,
-                             char * output_file )
+void mbedtls_mpi_write_file( char * input_X, char * output_file )
 {
     mbedtls_mpi X, Y;
     FILE *file_out, *file_in;
@@ -545,13 +544,13 @@ void mbedtls_mpi_write_file( char * input_X, int output_radix,
 
     file_out = fopen( output_file, "w" );
     TEST_ASSERT( file_out != NULL );
-    ret = mbedtls_mpi_write_file( NULL, &X, output_radix, file_out );
+    ret = mbedtls_mpi_write_file( NULL, &X, 16, file_out );
     fclose(file_out);
     TEST_ASSERT( ret == 0 );
 
     file_in = fopen( output_file, "r" );
     TEST_ASSERT( file_in != NULL );
-    ret = mbedtls_mpi_read_file( &Y, output_radix, file_in );
+    ret = mbedtls_mpi_read_file( &Y, 16, file_in );
     fclose(file_in);
     TEST_ASSERT( ret == 0 );
 
