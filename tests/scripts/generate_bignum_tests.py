@@ -20,6 +20,7 @@ generate only the specified files.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from builtins import ValueError, classmethod, oct, property, staticmethod
 import argparse
 import itertools
 import os
@@ -40,6 +41,29 @@ def hex_to_int(val):
 def quote_str(val):
     return "\"{}\"".format(val)
 
+def to_radix(val, radix, lead_char=""):
+    digits = "0123456789abcdef"
+    sign = "-" if val < 0 else ""
+    if lead_char.startswith("-"):
+        lead_char = lead_char[1:]
+        sign = "-"
+    val = abs(val)
+    if radix >= 16 or radix < 2:
+        ret = "{}{}{}{}".format(
+            sign,
+            "0" if (len(hex(val))) % 2 else "",
+            lead_char,
+            hex(val).replace("0x", "")
+            )
+    elif radix == 10:
+        ret = "{}{}{}".format(sign, lead_char, val)
+    else:
+        ret_d = []
+        while val:
+            ret_d.insert(0, digits[val % radix])
+            val //= radix
+        ret = "{}{}{}".format(sign, lead_char, "".join(ret_d) if ret_d else 0)
+    return quote_str(ret)
 
 class BaseTarget:
     """Base target for test case generation.
@@ -222,6 +246,283 @@ class BignumAdd(BignumOperation):
     @property
     def result(self):
         return quote_str(hex(self.int_l + self.int_r).replace("0x", "", 1))
+
+
+class BignumReadWrite(BignumTarget):
+    """Common features for read/write test cases.
+
+    This will contain
+     - Conversion tool for radixes
+     - error case attribute
+
+    Generally these will take an input to read,
+    and then compare this either with another read
+    (with different radix), or write this and
+    compare with known input.
+    Can generalize test cases to be input only, and
+    then create additional info in the class. For
+    failure states, these should be added in each child
+    class. This may involve:
+     - Restricting buffer sizes
+     - zeroed data
+     - invalid radix
+    """
+    error_ret = 0
+    error_values = {
+        "MBEDTLS_ERR_MPI_INVALID_CHARACTER": "Invalid character",
+        "MBEDTLS_ERR_MPI_BAD_INPUT_DATA": "Illegal radix",
+        "MBEDTLS_ERR_MPI_BUFFER_TOO_SMALL": "Buffer too small"
+    }
+    input_values = [0, 1, 128, -23, 23, 56125680981752282334141896320372489490613963693556392520816017892111350604111697682705498319512049040516698827829292076808006940873974979584527073481012636016353913462376755556720019831187364993587901952757307830896531678727717924, None]
+    # By default we only use radix 16
+    # This can be replaced in child classes to add more radix tests
+    radices = [10, 16]
+    radix = 16
+
+    def __init__(self, val, ret=0, desc="", lead_char="", rad_a=True) -> None:
+        """Set A as input, X as output expected."""
+        self.input_X = None
+        self.desc = " ".join(
+            x for x in [
+            "base",
+            str(self.radix),
+            desc if desc else self.gen_desc(val, lead_char)
+            ] if x
+        )
+        if val == None:
+            self.input_A = quote_str(lead_char)
+            val = 0
+            if self.radix == 16 and not rad_a:
+                self.input_X = self.input_A
+        else:
+            self.input_A = to_radix(
+                val, self.radix if rad_a else 16, lead_char=lead_char
+                )
+        if self.input_X is None:
+            self.input_X = to_radix(val, 16 if rad_a else self.radix)
+        self.error_ret = ret
+        if ret:
+            self.input_X = quote_str("")
+        super().__init__()
+
+    @property
+    def description(self):
+        if self.error_ret:
+            self.desc = "{} ({})".format(self.desc, self.error_desc)
+        return super().description
+
+    @property
+    def error_desc(self):
+        return self.error_values[self.error_ret] if self.error_ret else ""
+
+    def gen_desc(self, val, lead_char):
+        input_desc = []
+        if val is None:
+            input_desc.append("empty string")
+        elif val < 0:
+            input_desc.append("negative")
+        elif val == 0:
+            input_desc.append("zero")
+        if lead_char and lead_char != "-":
+            input_desc += ["leading", lead_char]
+        elif lead_char:
+            input_desc = ["negative"] + input_desc
+        return " ".join(input_desc)
+
+    @classmethod
+    def val_buf_size(cls, val):
+        """Calculate required buffer size to hold a value."""
+        n = abs(val).bit_length()
+        if cls.radix >= 4: n >>= 1
+        if cls.radix >= 16: n >>= 1
+        n += 3 # Null, negative sign and rounding compensation
+        n += n & 1 # Ensure n is even for hex
+        return n
+
+    @classmethod
+    def unique_test_cases(cls):
+        """Generate test cases for particular edge cases."""
+        return
+        yield
+
+    @classmethod
+    def fixed_test_cases(cls):
+        """Generate radix non-specific edge case tests."""
+        return
+        yield
+
+    @classmethod
+    def generate_tests(cls) -> Iterator[test_case.TestCase]:
+        if cls.func:
+            # Generate tests for the current class
+            # We set current tests radix
+            for radix in cls.radices:
+                cls.radix = radix
+                for input in cls.input_values:
+                    cur_op = cls(input)
+                    yield cur_op.create_test_case()
+                yield from cls.fixed_test_cases()
+            yield from cls.unique_test_cases()
+        # Once current class completed, check descendants
+        yield from super().generate_tests()
+
+
+class BignumReadString(BignumReadWrite):
+    count = 0
+    func = "mpi_read_string"
+    title = "Read MPI string"
+
+    radix = 0
+
+    def __init__(self, val, ret=0, desc="", lead_char="") -> None:
+        super().__init__(val, ret, desc, lead_char)
+
+    @property
+    def args(self):
+        return [
+            str(self.radix), self.input_A,
+            self.input_X.upper(), str(self.error_ret)
+            ]
+
+    @classmethod
+    def fixed_test_cases(cls):
+        """Run these on all radices"""
+        # Negative zero
+        yield cls(0, lead_char="-").create_test_case()
+        # Leading zero
+        yield cls(56, lead_char="0").create_test_case()
+        # Negative leading zero
+        yield cls(-34, lead_char="-0").create_test_case()
+
+    @classmethod
+    def unique_test_cases(cls):
+        """Only run these once"""
+        # Invalid radix
+        cls.radix = 17
+        yield cls(56, ret="MBEDTLS_ERR_MPI_BAD_INPUT_DATA").create_test_case()
+        cls.radix = 1
+        yield cls(0, ret="MBEDTLS_ERR_MPI_BAD_INPUT_DATA").create_test_case()
+        # Radix 15
+        cls.radix = 15
+        yield cls(29).create_test_case()
+        
+        # Invalid leading char
+        cls.radix = 10
+        yield cls(56, lead_char="a", ret="MBEDTLS_ERR_MPI_INVALID_CHARACTER").create_test_case()
+        # Few base 2 tests
+        cls.radix = 2
+        yield cls(0, lead_char="-", desc="negative zero").create_test_case()
+        # Leading zero
+        yield cls(56, lead_char="0", desc="leading zero").create_test_case()
+        yield cls(None, desc="empty hex string").create_test_case()
+        yield cls(128).create_test_case()
+        yield cls(-23).create_test_case()
+
+
+class BignumWriteString(BignumReadWrite):
+    count = 0
+    func = "mpi_write_string"
+    title = "Write MPI string"
+
+    def __init__(self, val, ret=0, desc="", lead_char="", buf_size=100):
+        self.buf_size = buf_size
+        if val is not None and ret == 0 and self.val_buf_size(val) > self.buf_size:
+            self.buf_size = 100 * (1 + ( self.val_buf_size(val) // 100 ))
+        super().__init__(val, ret, desc, lead_char, rad_a=False)
+        """if val is None:
+            self.input_X = quote_str(lead_char)
+        else:
+            self.input_X = to_radix(val, 16, lead_char=lead_char)
+        """
+
+    @property
+    def args(self):
+        return [
+            self.input_A, str(self.radix),
+            self.input_X.upper(), str(self.buf_size),
+            str(self.error_ret)
+        ]
+
+    @classmethod
+    def generate_small_buf(cls):
+        """Generate buffer size, value pairs to test small buffers."""
+        # Test up to 4 digits
+        for n in range(1, 4):
+            max_diff = 0
+            max_val = 0
+            buf_size = 0
+            min_diff = 10
+            min_val = 0
+            min_buf_size = 100
+            for i in range(cls.radix ** (n-1), (cls.radix ** n) -1):
+                digits = n + (n % 1) if cls.radix == 16 else n
+                diff = cls.val_buf_size(i) - digits
+                if diff > max_diff:
+                    max_diff = diff
+                    max_val = i
+                    buf_size = cls.val_buf_size(i)
+                if diff < min_diff:
+                    min_diff = diff
+                    min_val = i
+                    min_buf_size = cls.val_buf_size(i)
+            yield cls(
+                max_val,
+                buf_size=buf_size,
+                desc="minimal buffer (smallest requirement) {} digit".format(n)
+                ).create_test_case()
+            yield cls(
+                max_val,
+                buf_size=buf_size-1,
+                ret="MBEDTLS_ERR_MPI_BUFFER_TOO_SMALL",
+                desc="under minimal buffer {} digit".format(n)
+                ).create_test_case()
+            yield cls(
+                -min_val,
+                buf_size=min_buf_size,
+                desc="minimal buffer (largest requirement) {} digit".format(n)
+                ).create_test_case()
+            yield cls(
+                min_val,
+                buf_size=min_buf_size-1,
+                ret="MBEDTLS_ERR_MPI_BUFFER_TOO_SMALL",
+                desc="Under minimal buffer {} digit".format(n)
+                ).create_test_case()
+
+    @classmethod
+    def fixed_test_cases(cls):
+        """Run these on all radices"""
+        # Negative zero
+        yield cls(0, lead_char="-", desc="negative zero").create_test_case()
+        # Leading zero
+        yield cls(56, lead_char="0", desc="leading zero").create_test_case()
+        # Negative leading zero
+        yield cls(-23, lead_char="0", desc="negative leading zero").create_test_case()
+        # Just fit - Note buf_size is complex!
+        #if cls.radix != 16:
+        #    # Run a more complex set of buffer tests on non-16 radix
+        #    yield from cls.generate_small_buf()
+        #else:
+        min_buf_size = cls.val_buf_size(-35)
+        yield cls(-35, buf_size=min_buf_size, desc="minimal buffer size").create_test_case() # this fails at 5, passes at 6?
+        # too small
+        yield cls(-35, ret="MBEDTLS_ERR_MPI_BUFFER_TOO_SMALL", buf_size=min_buf_size-1).create_test_case()
+
+    @classmethod
+    def unique_test_cases(cls):
+        cls.radix = 2
+        yield cls(0, lead_char="-", desc="negative zero").create_test_case()
+        # Leading zero
+        yield cls(56, lead_char="0", desc="leading zero").create_test_case()
+        yield cls(None, desc="empty hex string").create_test_case()
+        yield cls(128).create_test_case()
+        yield cls(-23).create_test_case()
+        cls.radix = 17
+        yield cls(56, ret="MBEDTLS_ERR_MPI_BAD_INPUT_DATA").create_test_case()
+        cls.radix = 1
+        yield cls(0, ret="MBEDTLS_ERR_MPI_BAD_INPUT_DATA").create_test_case()
+        # Radix 15
+        cls.radix = 15
+        yield cls(29).create_test_case()
 
 
 class TestGenerator:
